@@ -3,13 +3,15 @@ import { BlogType, CommentType, UserType } from '../schema/schema'
 import User from "../models/User";
 import Blog from "../models/Blog";
 import Comment from "../models/Comment";
-import { Date, Document, startSession } from "mongoose";
+import { Date, Document, startSession, Types } from "mongoose";
 import { compareSync, hashSync } from 'bcryptjs'
 
 interface UserDocument extends Document {
+    name: string;
     email: string;
     password: string;
-    // other fields
+    blogs: Types.ObjectId[];
+    comments: Types.ObjectId[];
 }
 
 interface BlogDocument extends Document {
@@ -108,7 +110,7 @@ const mutations = new  GraphQLObjectType({
                 try {
                     session.startTransaction({ session })
                     blog =  new Blog({title, content, date, user})
-                    const existUser = await User.findById(user)
+                    const existUser = await User.findById(user) as UserDocument | null;
                     if(!existUser) return new Error('User not Found')
 
                     existUser.blogs.push(user)
@@ -116,6 +118,8 @@ const mutations = new  GraphQLObjectType({
                     return await blog.save({session})
                 } catch(err){
                     return new Error('Failed')
+                } finally {
+                    await session.commitTransaction();
                 }
             }            
         },
@@ -152,14 +156,23 @@ const mutations = new  GraphQLObjectType({
                 id: { type: new GraphQLNonNull(GraphQLID) }
             },
             async resolve(parent, { id }){
-                let exitblog: BlogDocument
+                let exitblog: any
+                const session = await startSession()
                 try {
-                    exitblog = await Blog.findById(id)
+                    session.startTransaction({ session })
+                    exitblog = await Blog.findById(id).populate("user")
 
+                    const existUser = exitblog?.user;
+                    if(!existUser) return new Error('User not linked') 
                     if(!exitblog) return new Error('Blog not found')
-                    return await Blog.findByIdAndDelete(id)
+                    existUser.blogs.pull(exitblog)
+                    await existUser.save({ session })
+
+                    return await exitblog.deleteOne({ session })
                 } catch(err){
-                    return new Error('Failed')
+                    return new Error(err)
+                }  finally {
+                    await session.commitTransaction();
                 }
             }            
         },        

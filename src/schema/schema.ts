@@ -19,7 +19,7 @@ export const UserType = new GraphQLObjectType({
         comments: {
             type: new GraphQLList(CommentType),
             async resolve(parent){
-                return Comment.find({ user: parent.id })
+                return await Comment.find({ user: parent.id })
             }
         }
     })
@@ -61,7 +61,7 @@ export const CommentType = new GraphQLObjectType({
         blog: {
             type: BlogType,
             async resolve(parent){
-                return Comment.findById(parent.Blog)
+                return Comment.findById(parent.blog)
             }
         }
     })
