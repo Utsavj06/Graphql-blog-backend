@@ -47,10 +47,10 @@ const RootQuery = new GraphQLObjectType({
     }
 })
 
-const mutations = new  GraphQLObjectType({
+const mutations = new GraphQLObjectType({
     name: 'mutation',
     fields: {
-        // user Signuo
+        // user Signup''
         signup:{
             type: UserType,
             args: {
@@ -150,7 +150,7 @@ const mutations = new  GraphQLObjectType({
             }             
         },
         // delete blog
-        daleteBlog: {
+        deleteBlog: {
             type: BlogType,
             args: {
                 id: { type: new GraphQLNonNull(GraphQLID) }
@@ -165,17 +165,53 @@ const mutations = new  GraphQLObjectType({
                     const existUser = exitblog?.user;
                     if(!existUser) return new Error('User not linked') 
                     if(!exitblog) return new Error('Blog not found')
-                    existUser.blogs.pull(exitblog)
-                    await existUser.save({ session })
+                    existUser.blogs.pull(exitblog._id);
+                    await existUser.save({ session });
 
-                    return await exitblog.deleteOne({ session })
+                    //  this needs to work
+                    return Blog.findByIdAndDelete(id)
                 } catch(err){
                     return new Error(err)
                 }  finally {
                     await session.commitTransaction();
                 }
             }            
-        },        
+        },   
+        
+        // add comment to Blog
+
+        addCommentToBlog: {
+            type: CommentType,
+            args: {
+                text: { type: new GraphQLNonNull(GraphQLString) },
+                date: { type: new GraphQLNonNull(GraphQLString) },
+                blog: { type: new GraphQLNonNull(GraphQLID) },
+                user: { type: new GraphQLNonNull(GraphQLID) }
+            },
+            async resolve(parent, { text, date, blog, user }){
+                const session = await startSession()
+                let comment: Document<any, any, any>;
+                try {
+                    session.startTransaction({ session })
+                    const existUser = await User.findById(user) as any;
+                    const existBlog = await Blog.findById(blog) as any;
+                    if(!existBlog || !existUser) return new Error('Blog not Found')
+
+                    
+                    comment = new Comment({ text, date, blog, user })
+                    existUser.comments.push(comment)
+                    existBlog.comments.push(comment)
+                    await existUser.save({session})
+                    await existBlog.save({session})
+                    await existBlog.save({session})
+                    return await comment.save({session})
+                } catch(err){
+                    return new Error(err)
+                } finally {
+                    await session.commitTransaction();
+                }
+            }
+        }
     }
 })
 

@@ -51,7 +51,7 @@ export const CommentType = new GraphQLObjectType({
     name: "CommentType",
     fields: ()=>({
         id: { type: new GraphQLNonNull(GraphQLID) },
-        text : { type: GraphQLString },
+        text : { type: new GraphQLNonNull(GraphQLString) },
         user: {
             type: UserType,
             async resolve(parent){
