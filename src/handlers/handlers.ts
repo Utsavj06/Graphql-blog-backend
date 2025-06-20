@@ -195,16 +195,48 @@ const mutations = new GraphQLObjectType({
                     session.startTransaction({ session })
                     const existUser = await User.findById(user) as any;
                     const existBlog = await Blog.findById(blog) as any;
-                    if(!existBlog || !existUser) return new Error('Blog not Found')
-
+                    if(!existBlog || !existUser) return new Error('Something not Found')
                     
                     comment = new Comment({ text, date, blog, user })
-                    existUser.comments.push(comment)
+                    existUser.comments.push(comment) 
                     existBlog.comments.push(comment)
                     await existUser.save({session})
                     await existBlog.save({session})
-                    await existBlog.save({session})
                     return await comment.save({session})
+                } catch(err){
+                    return new Error(err)
+                } finally {
+                    await session.commitTransaction();
+                }
+            }
+        },
+
+        // delete comment
+
+        deleteComment: {
+            type: CommentType,
+            args: {
+                id: { type: new GraphQLNonNull(GraphQLID) }
+            },
+            async resolve(parent, { id }){
+                let comment: any
+                const session = await startSession()
+                try {
+                    session.startTransaction({ session })
+                    comment = await Comment.findById(id)
+                    if(!comment) return new Error('Comment not found')
+
+                    const existUser = await User.findById(comment?.user) as any;
+                    if(!existUser) return new Error('User not linked')
+
+                    const existBlog = await Blog.findById(comment?.blog) as any;
+                    if(!existBlog) return new Error('Blog not linked')
+                    
+                    existUser.comments.pull(comment);
+                    existBlog.comments.pull(comment);
+                    await existUser.save({ session });
+                    await existBlog.save({ session });
+                    return await Comment.findByIdAndDelete(id)
                 } catch(err){
                     return new Error(err)
                 } finally {
