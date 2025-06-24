@@ -31,7 +31,7 @@ const RootQuery = new GraphQLObjectType({
             }
         },
 
-        blog: {
+        blogs: {
             type: new GraphQLList(BlogType),
             async resolve(){
                 return await Blog.find();
